@@ -30,14 +30,6 @@ if [ ! -f "/app/data/nodes.db" ]; then
     ) 200>/app/data/.db.lock
 fi
 
-# Fix permissions if running as root (for development)
-if [ "$(id -u)" = "0" ]; then
-    echo "Running as root, fixing permissions..."
-    chown -R nodejs:nodejs /app/data
-    # Switch to nodejs user (using Alpine's native su)
-    exec su nodejs -c "$*"
-fi
-
 # Trap signals for graceful shutdown
 # In stdio mode, don't output anything to stdout as it breaks JSON-RPC
 if [ "$MCP_MODE" = "stdio" ]; then
