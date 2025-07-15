@@ -1,6 +1,6 @@
 {
   "name": "n8n-mcp",
-  "version": "2.7.10",
+  "version": "2.7.13",
   "description": "Integration between n8n workflow automation and Model Context Protocol (MCP)",
   "main": "dist/index.js",
   "bin": {
@@ -26,6 +26,7 @@
     "update:n8n:check": "node scripts/update-n8n-deps.js --dry-run",
     "fetch:templates": "node dist/scripts/fetch-templates.js",
     "fetch:templates:robust": "node dist/scripts/fetch-templates-robust.js",
+    "prebuild:fts5": "npx tsx scripts/prebuild-fts5.ts",
     "test:templates": "node dist/scripts/test-templates.js",
     "test:workflow-validation": "node dist/scripts/test-workflow-validation.js",
     "test:template-validation": "node dist/scripts/test-template-validation.js",
@@ -36,9 +37,13 @@
     "test:n8n-manager": "node dist/scripts/test-n8n-manager-integration.js",
     "test:n8n-validate-workflow": "node dist/scripts/test-n8n-validate-workflow.js",
     "test:typeversion-validation": "node dist/scripts/test-typeversion-validation.js",
+    "test:error-handling": "node dist/scripts/test-error-handling-validation.js",
     "test:workflow-diff": "node dist/scripts/test-workflow-diff.js",
     "test:transactional-diff": "node dist/scripts/test-transactional-diff.js",
     "test:tools-documentation": "node dist/scripts/test-tools-documentation.js",
+    "test:search-improvements": "node dist/scripts/test-search-improvements.js",
+    "test:fts5-search": "node dist/scripts/test-fts5-search.js",
+    "migrate:fts5": "node dist/scripts/migrate-nodes-fts.js",
     "test:mcp:update-partial": "node dist/scripts/test-mcp-n8n-update-partial.js",
     "test:update-partial:debug": "node dist/scripts/test-update-partial-debug.js",
     "test:auth-logging": "tsx scripts/test-auth-logging.ts",
@@ -88,15 +93,18 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.13.2",
-    "@n8n/n8n-nodes-langchain": "^1.99.0",
+    "@n8n/n8n-nodes-langchain": "^1.100.1",
     "axios": "^1.10.0",
     "better-sqlite3": "^11.10.0",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
-    "n8n": "^1.100.1",
-    "n8n-core": "^1.99.0",
-    "n8n-workflow": "^1.97.0",
+    "n8n": "^1.101.1",
+    "n8n-core": "^1.100.0",
+    "n8n-workflow": "^1.98.0",
     "sql.js": "^1.13.0",
     "uuid": "^10.0.0"
+  },
+  "optionalDependencies": {
+    "better-sqlite3": "^11.10.0"
   }
 }

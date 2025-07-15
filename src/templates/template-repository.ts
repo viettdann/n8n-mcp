@@ -23,9 +23,82 @@ export interface StoredTemplate {
 
 export class TemplateRepository {
   private sanitizer: TemplateSanitizer;
+  private hasFTS5Support: boolean = false;
   
   constructor(private db: DatabaseAdapter) {
     this.sanitizer = new TemplateSanitizer();
+    this.initializeFTS5();
+  }
+  
+  /**
+   * Initialize FTS5 tables if supported
+   */
+  private initializeFTS5(): void {
+    this.hasFTS5Support = this.db.checkFTS5Support();
+    
+    if (this.hasFTS5Support) {
+      try {
+        // Check if FTS5 table already exists
+        const ftsExists = this.db.prepare(`
+          SELECT name FROM sqlite_master 
+          WHERE type='table' AND name='templates_fts'
+        `).get() as { name: string } | undefined;
+        
+        if (ftsExists) {
+          logger.info('FTS5 table already exists for templates');
+          
+          // Verify FTS5 is working by doing a test query
+          try {
+            const testCount = this.db.prepare('SELECT COUNT(*) as count FROM templates_fts').get() as { count: number };
+            logger.info(`FTS5 enabled with ${testCount.count} indexed entries`);
+          } catch (testError) {
+            logger.warn('FTS5 table exists but query failed:', testError);
+            this.hasFTS5Support = false;
+            return;
+          }
+        } else {
+          // Create FTS5 virtual table
+          logger.info('Creating FTS5 virtual table for templates...');
+          this.db.exec(`
+            CREATE VIRTUAL TABLE IF NOT EXISTS templates_fts USING fts5(
+              name, description, content=templates
+            );
+          `);
+          
+          // Create triggers to keep FTS5 in sync
+          this.db.exec(`
+            CREATE TRIGGER IF NOT EXISTS templates_ai AFTER INSERT ON templates BEGIN
+              INSERT INTO templates_fts(rowid, name, description)
+              VALUES (new.id, new.name, new.description);
+            END;
+          `);
+          
+          this.db.exec(`
+            CREATE TRIGGER IF NOT EXISTS templates_au AFTER UPDATE ON templates BEGIN
+              UPDATE templates_fts SET name = new.name, description = new.description
+              WHERE rowid = new.id;
+            END;
+          `);
+          
+          this.db.exec(`
+            CREATE TRIGGER IF NOT EXISTS templates_ad AFTER DELETE ON templates BEGIN
+              DELETE FROM templates_fts WHERE rowid = old.id;
+            END;
+          `);
+          
+          logger.info('FTS5 support enabled for template search');
+        }
+      } catch (error: any) {
+        logger.warn('Failed to initialize FTS5 for templates:', {
+          message: error.message,
+          code: error.code,
+          stack: error.stack
+        });
+        this.hasFTS5Support = false;
+      }
+    } else {
+      logger.info('FTS5 not available, using LIKE search for templates');
+    }
   }
   
   /**
@@ -110,16 +183,60 @@ export class TemplateRepository {
    * Search templates by name or description
    */
   searchTemplates(query: string, limit: number = 20): StoredTemplate[] {
-    // Use FTS for search
-    const ftsQuery = query.split(' ').map(term => `"${term}"`).join(' OR ');
+    logger.debug(`Searching templates for: "${query}" (FTS5: ${this.hasFTS5Support})`);
     
-    return this.db.prepare(`
-      SELECT t.* FROM templates t
-      JOIN templates_fts ON t.id = templates_fts.rowid
-      WHERE templates_fts MATCH ?
-      ORDER BY rank, t.views DESC
+    // If FTS5 is not supported, go straight to LIKE search
+    if (!this.hasFTS5Support) {
+      logger.debug('Using LIKE search (FTS5 not available)');
+      return this.searchTemplatesLIKE(query, limit);
+    }
+    
+    try {
+      // Use FTS for search - escape quotes in terms
+      const ftsQuery = query.split(' ').map(term => {
+        // Escape double quotes by replacing with two double quotes
+        const escaped = term.replace(/"/g, '""');
+        return `"${escaped}"`;
+      }).join(' OR ');
+      logger.debug(`FTS5 query: ${ftsQuery}`);
+      
+      const results = this.db.prepare(`
+        SELECT t.* FROM templates t
+        JOIN templates_fts ON t.id = templates_fts.rowid
+        WHERE templates_fts MATCH ?
+        ORDER BY rank, t.views DESC
+        LIMIT ?
+      `).all(ftsQuery, limit) as StoredTemplate[];
+      
+      logger.debug(`FTS5 search returned ${results.length} results`);
+      return results;
+    } catch (error: any) {
+      // If FTS5 query fails, fallback to LIKE search
+      logger.warn('FTS5 template search failed, using LIKE fallback:', {
+        message: error.message,
+        query: query,
+        ftsQuery: query.split(' ').map(term => `"${term}"`).join(' OR ')
+      });
+      return this.searchTemplatesLIKE(query, limit);
+    }
+  }
+  
+  /**
+   * Fallback search using LIKE when FTS5 is not available
+   */
+  private searchTemplatesLIKE(query: string, limit: number = 20): StoredTemplate[] {
+    const likeQuery = `%${query}%`;
+    logger.debug(`Using LIKE search with pattern: ${likeQuery}`);
+    
+    const results = this.db.prepare(`
+      SELECT * FROM templates 
+      WHERE name LIKE ? OR description LIKE ?
+      ORDER BY views DESC, created_at DESC
       LIMIT ?
-    `).all(ftsQuery, limit) as StoredTemplate[];
+    `).all(likeQuery, likeQuery, limit) as StoredTemplate[];
+    
+    logger.debug(`LIKE search returned ${results.length} results`);
+    return results;
   }
   
   /**
@@ -207,5 +324,33 @@ export class TemplateRepository {
   clearTemplates(): void {
     this.db.exec('DELETE FROM templates');
     logger.info('Cleared all templates from database');
+  }
+  
+  /**
+   * Rebuild the FTS5 index for all templates
+   * This is needed when templates are bulk imported or when FTS5 gets out of sync
+   */
+  rebuildTemplateFTS(): void {
+    // Skip if FTS5 is not supported
+    if (!this.hasFTS5Support) {
+      return;
+    }
+    
+    try {
+      // Clear existing FTS data
+      this.db.exec('DELETE FROM templates_fts');
+      
+      // Repopulate from templates table
+      this.db.exec(`
+        INSERT INTO templates_fts(rowid, name, description)
+        SELECT id, name, description FROM templates
+      `);
+      
+      const count = this.getTemplateCount();
+      logger.info(`Rebuilt FTS5 index for ${count} templates`);
+    } catch (error) {
+      logger.warn('Failed to rebuild template FTS5 index:', error);
+      // Non-critical error - search will fallback to LIKE
+    }
   }
 }

@@ -2,9 +2,9 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![GitHub stars](https://img.shields.io/github/stars/czlonkowski/n8n-mcp?style=social)](https://github.com/czlonkowski/n8n-mcp)
-[![Version](https://img.shields.io/badge/version-2.7.8-blue.svg)](https://github.com/czlonkowski/n8n-mcp)
+[![Version](https://img.shields.io/badge/version-2.7.13-blue.svg)](https://github.com/czlonkowski/n8n-mcp)
 [![npm version](https://img.shields.io/npm/v/n8n-mcp.svg)](https://www.npmjs.com/package/n8n-mcp)
-[![n8n version](https://img.shields.io/badge/n8n-v1.100.1-orange.svg)](https://github.com/n8n-io/n8n)
+[![n8n version](https://img.shields.io/badge/n8n-v1.101.1-orange.svg)](https://github.com/n8n-io/n8n)
 [![Docker](https://img.shields.io/badge/docker-ghcr.io%2Fczlonkowski%2Fn8n--mcp-green.svg)](https://github.com/czlonkowski/n8n-mcp/pkgs/container/n8n-mcp)
 
 A Model Context Protocol (MCP) server that provides AI assistants with comprehensive access to n8n node documentation, properties, and operations. Deploy in minutes to give Claude and other AI assistants deep knowledge about n8n's 525+ workflow automation nodes.
@@ -13,7 +13,7 @@ A Model Context Protocol (MCP) server that provides AI assistants with comprehen
 
 n8n-MCP serves as a bridge between n8n's workflow automation platform and AI models, enabling them to understand and work with n8n nodes effectively. It provides structured access to:
 
-- 📚 **525 n8n nodes** from both n8n-nodes-base and @n8n/n8n-nodes-langchain
+- 📚 **528 n8n nodes** from both n8n-nodes-base and @n8n/n8n-nodes-langchain
 - 🔧 **Node properties** - 99% coverage with detailed schemas
 - ⚡ **Node operations** - 63.6% coverage of available actions
 - 📄 **Documentation** - 90% coverage from official n8n docs (including AI nodes)
@@ -205,6 +205,26 @@ Add to Claude Desktop config:
 
 **Restart Claude Desktop after updating configuration** - That's it! 🎉
 
+## 💖 Support This Project
+
+<div align="center">
+  <a href="https://github.com/sponsors/czlonkowski">
+    <img src="https://img.shields.io/badge/Sponsor-❤️-db61a2?style=for-the-badge&logo=github-sponsors" alt="Sponsor n8n-mcp" />
+  </a>
+</div>
+
+**n8n-mcp** started as a personal tool but now helps tens of thousands of developers automate their workflows efficiently. Maintaining and developing this project competes with my paid work.
+
+Your sponsorship helps me:
+- 🚀 Dedicate focused time to new features
+- 🐛 Respond quickly to issues
+- 📚 Keep documentation up-to-date
+- 🔄 Ensure compatibility with latest n8n releases
+
+Every sponsorship directly translates to hours invested in making n8n-mcp better for everyone. **[Become a sponsor →](https://github.com/sponsors/czlonkowski)**
+
+---
+
 ### Option 3: Local Installation (For Development)
 
 **Prerequisites:** [Node.js](https://nodejs.org/) installed on your system
@@ -263,6 +283,10 @@ Add to Claude Desktop config:
 
 > 💡 Tip: If you’re running n8n locally on the same machine (e.g., via Docker), use http://host.docker.internal:5678 as the N8N_API_URL.
 
+## 💻 Visual Studio Code Setup
+
+See [VS Code Project Setup](./docs/VS_CODE_PROJECT_SETUP.md) for instructions.
+
 ## 🤖 Claude Project Setup
 
 For the best results when using n8n-MCP with Claude Projects, use these enhanced system instructions:
@@ -272,9 +296,10 @@ You are an expert in n8n automation software using n8n-MCP tools. Your role is t
 
 ## Core Workflow Process
 
-1. **ALWAYS start with**: `tools_documentation()` to understand best practices and available tools.
+1. **ALWAYS start new conversation with**: `tools_documentation()` to understand best practices and available tools.
 
 2. **Discovery Phase** - Find the right nodes:
+   - Think deeply about user request and the logic you are going to build to fulfill it. Ask follow-up questions to clarify the user's intent, if something is unclear. Then, proceed with the rest of your instructions.
    - `search_nodes({query: 'keyword'})` - Search by functionality
    - `list_nodes({category: 'trigger'})` - Browse by category
    - `list_ai_tools()` - See AI-capable nodes (remember: ANY node can be an AI tool!)
@@ -284,6 +309,7 @@ You are an expert in n8n automation software using n8n-MCP tools. Your role is t
    - `search_node_properties(nodeType, 'auth')` - Find specific properties
    - `get_node_for_task('send_email')` - Get pre-configured templates
    - `get_node_documentation(nodeType)` - Human-readable docs when needed
+   - It is good common practice to show a visual representation of the workflow architecture to the user and asking for opinion, before moving forward. 
 
 4. **Pre-Validation Phase** - Validate BEFORE building:
    - `validate_node_minimal(nodeType, config)` - Quick required fields check
@@ -295,7 +321,7 @@ You are an expert in n8n automation software using n8n-MCP tools. Your role is t
    - Connect nodes with proper structure
    - Add error handling where appropriate
    - Use expressions like $json, $node["NodeName"].json
-   - Build the workflow in an artifact (unless the user asked to create in n8n instance)
+   - Build the workflow in an artifact for easy editing downstream (unless the user asked to create in n8n instance)
 
 6. **Workflow Validation Phase** - Validate complete workflow:
    - `validate_workflow(workflow)` - Complete validation including connections
@@ -311,7 +337,8 @@ You are an expert in n8n automation software using n8n-MCP tools. Your role is t
 
 ## Key Insights
 
-- **VALIDATE EARLY AND OFTEN** - Catch errors before they reach production
+- **USE CODE NODE ONLY WHEN IT IS NECESSARY** - always prefer to use standard nodes over code node. Use code node only when you are sure you need it.
+- **VALIDATE EARLY AND OFTEN** - Catch errors before they reach deployment
 - **USE DIFF UPDATES** - Use n8n_update_partial_workflow for 80-90% token savings
 - **ANY node can be an AI tool** - not just those with usableAsTool=true
 - **Pre-validate configurations** - Use validate_node_minimal before building
@@ -387,6 +414,17 @@ n8n_update_partial_workflow({
 ```
 
 Save these instructions in your Claude Project for optimal n8n workflow assistance with comprehensive validation.
+
+## 🚨 Important: Sharing Guidelines
+
+This project is MIT licensed and free for everyone to use. However:
+
+- **✅ DO**: Share this repository freely with proper attribution
+- **✅ DO**: Include a direct link to https://github.com/czlonkowski/n8n-mcp in your first post/video
+- **❌ DON'T**: Gate this free tool behind engagement requirements (likes, follows, comments)
+- **❌ DON'T**: Use this project for engagement farming on social media
+
+This tool was created to benefit everyone in the n8n community without friction. Please respect the MIT license spirit by keeping it accessible to all.
 
 ## Features
 
@@ -565,10 +603,10 @@ npm run dev:http       # HTTP dev mode
 
 ## 📊 Metrics & Coverage
 
-Current database coverage (n8n v1.100.1):
+Current database coverage (n8n v1.101.1):
 
-- ✅ **525/525** nodes loaded (100%)
-- ✅ **520** nodes with properties (99%)
+- ✅ **528/528** nodes loaded (100%)
+- ✅ **520** nodes with properties (98.5%)
 - ✅ **470** nodes with documentation (90%)
 - ✅ **263** AI-capable tools detected
 - ✅ **AI Agent & LangChain nodes** fully documented
@@ -577,48 +615,7 @@ Current database coverage (n8n v1.100.1):
 
 ## 🔄 Recent Updates
 
-### v2.7.10 - Enhanced Authentication Logging
-- ✅ **ENHANCED**: Authentication logging for better debugging of client authentication issues
-- ✅ **ADDED**: Specific error reasons: `no_auth_header`, `invalid_auth_format`, `invalid_token`
-- ✅ **FIXED**: Issue #22 - Improved authentication failure diagnostics
-- ✅ **FIXED**: Issue #16 - AUTH_TOKEN_FILE validation for Docker production stacks
-- ✅ **SECURITY**: Removed token length from logs, trimmed tokens for whitespace edge cases
-
-### v2.7.8 - npx Support & npm Publishing
-- ✅ **NEW**: npx support - Run `npx n8n-mcp` without installation!
-- ✅ **OPTIMIZED**: npm package with runtime-only dependencies (8 deps vs 50+ dev deps)
-- ✅ **REDUCED**: Package size from 1GB+ to ~50MB by excluding dev dependencies
-- ✅ **FIXED**: Issue #15 - Added npx execution support as requested
-- ✅ **ENHANCED**: Database path resolution for npx, global, and local installations
-
-### v2.7.5 - AUTH_TOKEN_FILE Support
-- ✅ **NEW**: AUTH_TOKEN_FILE support for Docker secrets compatibility
-- ✅ **ADDED**: Known Issues section documenting Claude Desktop container duplication
-- ✅ **ENHANCED**: Authentication flexibility with both AUTH_TOKEN and AUTH_TOKEN_FILE
-- ✅ **FIXED**: Issue #16 - AUTH_TOKEN_FILE now properly implemented as documented
-- ✅ **BACKWARD COMPATIBLE**: AUTH_TOKEN continues to work as before
-
-### v2.7.4 - Self-Documenting MCP Tools
-- ✅ **RENAMED**: `start_here_workflow_guide` → `tools_documentation` for clarity
-- ✅ **NEW**: Depth parameter - Control documentation detail with "essentials" or "full"
-- ✅ **NEW**: Per-tool documentation - Get help for any specific MCP tool by name
-- ✅ **CONCISE**: Essential info by default, comprehensive docs on demand
-- ✅ **LLM-FRIENDLY**: Plain text format instead of JSON for better readability
-- ✅ **QUICK HELP**: Call without parameters for immediate quick reference
-- ✅ **8 TOOLS DOCUMENTED**: Complete documentation for most commonly used tools
-
-### v2.7.0 - Diff-Based Workflow Editing with Transactional Updates
-- ✅ **NEW**: `n8n_update_partial_workflow` tool - Update workflows using diff operations
-- ✅ **RENAMED**: `n8n_update_workflow` → `n8n_update_full_workflow` for clarity
-- ✅ **80-90% TOKEN SAVINGS**: Only send changes, not entire workflow JSON
-- ✅ **13 OPERATIONS**: addNode, removeNode, updateNode, moveNode, enable/disable, connections, settings, tags
-- ✅ **TRANSACTIONAL**: Two-pass processing allows adding nodes and connections in any order
-- ✅ **5 OPERATION LIMIT**: Ensures reliability and atomic updates
-- ✅ **VALIDATION MODE**: Test changes with `validateOnly: true` before applying
-- ✅ **IMPROVED DOCS**: Comprehensive parameter documentation and examples
-
-
-See [CHANGELOG.md](./docs/CHANGELOG.md) for full version history.
+See [CHANGELOG.md](./docs/CHANGELOG.md) for full version history and recent changes.
 
 ## ⚠️ Known Issues
 

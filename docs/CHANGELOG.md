@@ -5,6 +5,223 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.13] - 2025-07-11
+
+### Fixed
+- **npx Execution**: Fixed WASM file resolution for sql.js when running via `npx n8n-mcp` (Issue #31)
+  - Enhanced WASM file locator to try multiple path resolution strategies
+  - Added `require.resolve()` for reliable package location in npm environments
+  - Made better-sqlite3 an optional dependency to prevent installation failures
+  - Improved error messages when sql.js fails to load
+  - The package now works correctly with `npx` without any manual configuration
+
+### Changed
+- **Database Adapter**: Improved path resolution for both local development and npm package contexts
+  - Supports various npm installation scenarios (global, local, npx cache)
+  - Better fallback handling for sql.js WebAssembly file loading
+
+## [2.7.12] - 2025-07-10
+
+### Updated
+- **n8n Dependencies**: Updated to latest versions for compatibility and new features
+  - n8n: 1.100.1 → 1.101.1
+  - n8n-core: 1.99.0 → 1.100.0
+  - n8n-workflow: 1.97.0 → 1.98.0
+  - @n8n/n8n-nodes-langchain: 1.99.0 → 1.100.1
+- **Node Database**: Rebuilt with 528 nodes from updated n8n packages
+- All validation tests passing with updated dependencies
+
+## [2.7.11] - 2025-07-10
+
+### Enhanced
+- **Token Efficiency**: Significantly reduced MCP tool description lengths for better AI agent performance
+  - Documentation tools: Average 129 chars (down from ~250-450)
+  - Management tools: Average 93 chars (down from ~200-400)
+  - Overall token reduction: ~65-70%
+  - Moved detailed documentation to `tools_documentation()` system
+  - Only 2 tools exceed 200 chars (list_nodes: 204, n8n_update_partial_workflow: 284)
+  - Preserved all essential information while removing redundancy
+
+### Fixed
+- **search_nodes Tool**: Major improvements to search functionality for AI agents
+  - Primary nodes (webhook, httpRequest) now appear first in search results instead of being buried
+  - Fixed issue where searching "webhook" returned specialized triggers instead of the main Webhook node
+  - Fixed issue where searching "http call" didn't prioritize HTTP Request node
+  - Fixed FUZZY mode returning no results for typos like "slak" (lowered threshold from 300 to 200)
+  - Removed unnecessary searchInfo messages that appeared on every search
+  - Fixed HTTP node type comparison case sensitivity issue
+  - Implemented relevance-based ranking with special boosting for primary nodes
+- **search_templates FTS5 Error**: Fixed "no such module: fts5" error in environments without FTS5 support (fixes Claude Desktop issue)
+  - Made FTS5 completely optional - detects support at runtime
+  - Removed FTS5 from required schema to prevent initialization failures
+  - Automatically falls back to LIKE search when FTS5 is unavailable
+  - FTS5 tables and triggers created conditionally only if supported
+  - Template search now works in ALL SQLite environments
+
+### Added
+- **FTS5 Full-Text Search**: Added SQLite FTS5 support for faster and more intelligent node searching
+  - Automatic fallback to LIKE queries if FTS5 is unavailable
+  - Supports advanced search modes: OR (default), AND (all terms required), FUZZY (typo-tolerant)
+  - Significantly improves search performance for large databases
+  - FUZZY mode now uses edit distance (Levenshtein) for better typo tolerance
+- **FTS5 Detection**: Added runtime detection of FTS5 support
+  - `checkFTS5Support()` method in database adapters
+  - Conditional initialization of FTS5 features
+  - Graceful degradation when FTS5 not available
+
+## [Unreleased]
+
+### Fixed
+- **Code Node Documentation**: Corrected information about `$helpers` object and `getWorkflowStaticData` function
+  - `$getWorkflowStaticData()` is a standalone function, NOT `$helpers.getWorkflowStaticData()`
+  - Updated Code node guide to clarify which functions are standalone vs methods on $helpers
+  - Added validation warning when using incorrect `$helpers.getWorkflowStaticData` syntax
+  - Based on n8n community feedback and GitHub issues showing this is a common confusion point
+
+### Added
+- **Expression vs Code Node Clarification**: Added comprehensive documentation about differences between expression and Code node contexts
+  - New section "IMPORTANT: Code Node vs Expression Context" explaining key differences
+  - Lists expression-only functions not available in Code nodes ($now(), $today(), Tournament template functions)
+  - Clarifies different syntax: $('Node Name') vs $node['Node Name']
+  - Documents reversed JMESPath parameter order between contexts
+  - Added "Expression Functions NOT in Code Nodes" section with alternatives
+- **Enhanced Code Node Validation**: Added new validation checks for common expression/Code node confusion
+  - Detects expression syntax {{...}} in Code nodes with clear error message
+  - Warns about using $node[] syntax instead of $() in Code nodes
+  - Identifies expression-only functions with helpful alternatives
+  - Checks for wrong JMESPath parameter order
+  - Test script `test-expression-code-validation.ts` to verify validation works correctly
+
+## [2.7.11] - 2025-07-09
+
+### Fixed
+- **Issue #26**: Fixed critical issue where AI agents were placing error handling properties inside `parameters` instead of at node level
+  - Root cause: AI agents were confused by examples showing `parameters.path` updates and assumed all properties followed the same pattern
+  - Error handling properties (`onError`, `retryOnFail`, `maxTries`, `waitBetweenTries`, `alwaysOutputData`) must be placed at the NODE level
+  - Other node-level properties (`executeOnce`, `disabled`, `notes`, `notesInFlow`, `credentials`) were previously undocumented for AI agents
+  - Updated `n8n_create_workflow` and `n8n_update_partial_workflow` documentation with explicit examples and warnings
+  - Verified fix with workflows tGyHrsBNWtaK0inQ, usVP2XRXhI35m3Ts, and swuogdCCmNY7jj71
+
+### Added
+- **Comprehensive Node-Level Properties Reference** in tools documentation (`tools_documentation()`)
+  - Documents ALL available node-level properties with explanations
+  - Shows correct placement and usage for each property
+  - Provides complete example node configuration
+  - Accessible via `tools_documentation({depth: "full"})` for AI agents
+- **Enhanced Workflow Validation** for additional node-level properties
+  - Now validates `executeOnce`, `disabled`, `notes`, `notesInFlow` types
+  - Checks for misplacement of ALL node-level properties (expanded from 6 to 11)
+  - Provides clear error messages with correct examples when properties are misplaced
+  - Shows specific fix with example node structure
+- **Test Script** `test-node-level-properties.ts` demonstrating correct usage
+  - Shows all node-level properties in proper configuration
+  - Demonstrates common mistakes to avoid
+  - Validates workflow configurations
+- **Comprehensive Code Node Documentation** in tools_documentation
+  - New `code_node_guide` topic with complete reference for JavaScript and Python
+  - Covers all built-in variables: $input, $json, $node, $workflow, $execution, $prevNode
+  - Documents helper functions: DateTime (Luxon), JMESPath, $helpers methods
+  - Includes return format requirements with correct/incorrect examples
+  - Security considerations and banned operations
+  - Common patterns: data transformation, filtering, aggregation, error handling
+  - Code node as AI tool examples
+  - Performance best practices and debugging tips
+- **Enhanced Code Node Validation** with n8n-specific patterns
+  - Validates return statement presence and format
+  - Checks for array of objects with json property
+  - Detects common mistakes (returning primitives, missing array wrapper)
+  - Validates n8n variable usage ($input, items, $json context)
+  - Security checks (eval, exec, require, file system access)
+  - Language-specific validation for JavaScript and Python
+  - Mode-specific warnings ($json in wrong mode)
+  - Async/await pattern validation
+  - External library detection with helpful alternatives
+- **Expanded Code Node Examples** in ExampleGenerator
+  - Data transformation, aggregation, and filtering examples
+  - API integration with error handling
+  - Python data processing example
+  - Code node as AI tool pattern
+  - CSV to JSON transformation
+  - All examples include proper return format
+- **New Code Node Task Templates**
+  - `custom_ai_tool`: Create custom tools for AI agents
+  - `aggregate_data`: Summary statistics from multiple items
+  - `batch_process_with_api`: Process items in batches with rate limiting
+  - `error_safe_transform`: Robust data transformation with validation
+  - `async_data_processing`: Concurrent processing with limits
+  - `python_data_analysis`: Statistical analysis using Python
+  - All templates include comprehensive error handling
+- **Fixed Misleading Documentation** based on real-world testing:
+  - **Crypto Module**: Clarified that `require('crypto')` IS available despite editor warnings
+  - **Helper Functions**: Fixed documentation showing `$getWorkflowStaticData()` is standalone, not on $helpers
+  - **JMESPath**: Corrected syntax from `jmespath.search()` to `$jmespath()`
+  - **Node Access**: Fixed from `$node['Node Name']` to `$('Node Name')`
+  - **Python**: Documented `item.json.to_py()` for JsProxy conversion
+  - Added comprehensive "Available Functions and Libraries" section
+  - Created security examples showing proper crypto usage
+  - **JMESPath Numeric Literals**: Added critical documentation about n8n-specific requirement for backticks around numbers in filters
+    - Example: `[?age >= \`18\`]` not `[?age >= 18]`
+    - Added validation to detect and warn about missing backticks
+    - Based on Claude Desktop feedback from workflow testing
+  - **Webhook Data Structure**: Fixed common webhook data access gotcha
+    - Webhook payload is at `items[0].json.body`, NOT `items[0].json` 
+    - Added dedicated "Webhook Data Access" section in Code node documentation
+    - Created webhook processing example showing correct data access
+    - Added validation to detect incorrect webhook data access patterns
+    - New task template `process_webhook_data` with complete example
+
+### Enhanced
+- **MCP Tool Documentation** significantly improved:
+  - `n8n_create_workflow` now includes complete node example with all properties
+  - `n8n_update_partial_workflow` shows difference between node-level vs parameter updates
+  - Added "CRITICAL" warnings about property placement
+  - Updated best practices and common pitfalls sections
+- **Workflow Validator** improvements:
+  - Expanded property checking from 6 to 11 node-level properties
+  - Better error messages showing complete correct structure
+  - Type validation for all node-level boolean and string properties
+- **Code Node Validation** enhanced with new checks:
+  - Detects incorrect `$helpers.getWorkflowStaticData()` usage
+  - Warns about `$helpers` usage without availability check
+  - Validates crypto usage with proper require statement
+  - All based on common errors found in production workflows
+- **Type Definitions** updated:
+  - Added `notesInFlow` to WorkflowNode interface in workflow-validator.ts
+  - Fixed credentials type from `Record<string, string>` to `Record<string, unknown>` in n8n-api.ts
+- **NodeSpecificValidators** now includes comprehensive Code node validation
+  - Language-specific syntax checks
+  - Return format validation with detailed error messages
+  - n8n variable usage validation
+  - Security pattern detection
+  - Error handling recommendations
+  - Mode-specific suggestions
+- **Config Validator** improved Code node validation
+  - Better return statement detection
+  - Enhanced syntax checking for both JavaScript and Python
+  - More helpful error messages with examples
+  - Detection of common n8n Code node mistakes
+- **Fixed Documentation Inaccuracies** based on user testing and n8n official docs:
+  - JMESPath: Corrected syntax to `$jmespath()` instead of `jmespath.search()`
+  - Node Access: Fixed to show `$('Node Name')` syntax, not `$node`
+  - Python: Documented `_input.all()` and `item.json.to_py()` for JsProxy conversion
+  - Python: Added underscore prefix documentation for all built-in variables
+  - Validation: Skip property visibility warnings for Code nodes to reduce false positives
+
+## [2.7.10] - 2025-07-09
+
+### Documentation Update
+- Added comprehensive documentation on how to update error handling properties using `n8n_update_partial_workflow`
+- Error handling properties can be updated at the node level using the workflow diff engine:
+  - `continueOnFail`: boolean - Whether to continue workflow on node failure
+  - `onError`: 'continueRegularOutput' | 'continueErrorOutput' | 'stopWorkflow' - Error handling strategy
+  - `retryOnFail`: boolean - Whether to retry on failure
+  - `maxTries`: number - Maximum retry attempts
+  - `waitBetweenTries`: number - Milliseconds to wait between retries
+  - `alwaysOutputData`: boolean - Always output data even on error
+- Added test script demonstrating error handling property updates
+- Updated WorkflowNode type to include `onError` property in n8n-api types
+- Workflow diff engine now properly handles all error handling properties
+
 ## [2.7.10] - 2025-07-07
 
 ### Added
@@ -363,6 +580,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Basic n8n and MCP integration
 - Core workflow automation features
 
+[2.7.13]: https://github.com/czlonkowski/n8n-mcp/compare/v2.7.12...v2.7.13
+[2.7.12]: https://github.com/czlonkowski/n8n-mcp/compare/v2.7.11...v2.7.12
+[2.7.11]: https://github.com/czlonkowski/n8n-mcp/compare/v2.7.10...v2.7.11
 [2.7.10]: https://github.com/czlonkowski/n8n-mcp/compare/v2.7.8...v2.7.10
 [2.7.8]: https://github.com/czlonkowski/n8n-mcp/compare/v2.7.5...v2.7.8
 [2.7.5]: https://github.com/czlonkowski/n8n-mcp/compare/v2.7.4...v2.7.5
